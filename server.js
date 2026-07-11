@@ -1,15 +1,23 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Serve the frontend (index.html and any other static files) from /public
-app.use(express.static(path.join(__dirname, 'public')));
-
 const API_KEY = process.env.GEMINI_API_KEY;
+
+// Serve index.html directly at the root URL
+app.get('/', (req, res) => {
+  const filePath = path.join(__dirname, 'index.html');
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(500).send('index.html file server ke folder mein nahi mili.');
+  }
+});
 
 app.post('/api/chat', async (req, res) => {
   try {
@@ -19,7 +27,6 @@ app.post('/api/chat', async (req, res) => {
 
     const { system, messages } = req.body;
 
-    // Convert Anthropic-style messages to Gemini format
     const contents = messages.map(m => {
       let parts = [];
       if (Array.isArray(m.content)) {
@@ -63,7 +70,6 @@ app.post('/api/chat', async (req, res) => {
       return res.status(geminiRes.status).json(data);
     }
 
-    // Convert Gemini response back to Anthropic-style shape the frontend expects
     const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('\n') || '';
     res.json({ content: [{ type: 'text', text: text }] });
 
@@ -75,4 +81,3 @@ app.post('/api/chat', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('Server chal raha hai port ' + PORT + ' par'));
-
